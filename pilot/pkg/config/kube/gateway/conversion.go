@@ -553,12 +553,25 @@ var allowedParentReferences = sets.New(
 	gvk.Service,
 	gvk.ServiceEntry,
 	gvk.ListenerSet,
+	// canary-1.30-xls patch: allow HTTPRoutes to parentRef the experimental
+	// XListenerSet during the in-flight migration; our adapter rewrites
+	// the internal LS identity-Kind to gvk.XListenerSet for matching.
+	gvk.XListenerSet,
 )
 
 func toInternalParentReference(p k8s.ParentReference, localNamespace string) (parentKey, error) {
 	ref := gatewaycommon.NormalizeReference(p.Group, p.Kind, gvk.KubernetesGateway)
 	if !allowedParentReferences.Contains(ref) {
 		return parentKey{}, fmt.Errorf("unsupported parent: %v/%v", p.Group, p.Kind)
+	}
+	// canary-1.30-xls patch: normalize the experimental XListenerSet kind
+	// to the GA ListenerSet kind, so HTTPRoutes that still parentRef the
+	// experimental kind during migration resolve via the same internal
+	// Gateway entries as the GA kind. The helmfile dual-renders both
+	// kinds with identical name + section name, so this normalization is
+	// safe — both refer to the same logical listener set.
+	if ref == gvk.XListenerSet {
+		ref = gvk.ListenerSet
 	}
 	return parentKey{
 		Kind: ref,

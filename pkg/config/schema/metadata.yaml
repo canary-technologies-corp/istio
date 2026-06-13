@@ -339,6 +339,25 @@ resources:
     statusProtoPackage: "sigs.k8s.io/gateway-api/apis/v1"
     statusProto: "ListenerSetStatus"
 
+  # XListenerSet: in-fork compat support for the experimental kind so
+  # existing HTTPRoute parentRefs (kind:XListenerSet group:gateway.networking.x-k8s.io)
+  # keep working during the v1.29 -> v1.30 migration. Go type lives at
+  # istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat;
+  # wire shape is identical to the GA ListenerSet (verified via diff of
+  # gateway-api v1.4 XListenerSet types vs v1.5 ListenerSet types).
+  # Spec/Status proto types reference the GA package (same on-wire shape).
+  # canary-1.30-xls patch.
+  - kind: "XListenerSet"
+    identifier: XListenerSet
+    plural: "xlistenersets"
+    group: "gateway.networking.x-k8s.io"
+    version: "v1alpha1"
+    protoPackage: "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
+    proto: "ListenerSetSpec"
+    statusProtoPackage: "sigs.k8s.io/gateway-api/apis/v1"
+    statusProto: "ListenerSetStatus"
+    noTypedClient: true
+
   ## Istio resources
   - kind: "VirtualService"
     plural: "virtualservices"

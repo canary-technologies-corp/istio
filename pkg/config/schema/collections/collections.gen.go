@@ -31,6 +31,7 @@ import (
 	istioioapinetworkingv1beta1 "istio.io/api/networking/v1beta1"
 	istioioapisecurityv1beta1 "istio.io/api/security/v1beta1"
 	istioioapitelemetryv1alpha1 "istio.io/api/telemetry/v1alpha1"
+	istioioistiopilotpkgconfigkubegatewayxlistenersetcompat "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 	"istio.io/istio/pkg/config/schema/collection"
 	"istio.io/istio/pkg/config/schema/resource"
 	"istio.io/istio/pkg/config/validation"
@@ -864,6 +865,21 @@ var (
 		ValidateProto: validation.EmptyValidate,
 	}.MustBuild()
 
+	XListenerSet = resource.Builder{
+		Identifier: "XListenerSet",
+		Group:      "gateway.networking.x-k8s.io",
+		Kind:       "XListenerSet",
+		Plural:     "xlistenersets",
+		Version:    "v1alpha1",
+		Proto:      "ListenerSetSpec", StatusProto: "ListenerSetStatus",
+		ReflectType: reflect.TypeOf(&istioioistiopilotpkgconfigkubegatewayxlistenersetcompat.ListenerSetSpec{}).Elem(), StatusType: reflect.TypeOf(&sigsk8siogatewayapiapisv1.ListenerSetStatus{}).Elem(),
+		ProtoPackage: "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat", StatusPackage: "sigs.k8s.io/gateway-api/apis/v1",
+		ClusterScoped: false,
+		Synthetic:     false,
+		Builtin:       false,
+		ValidateProto: validation.EmptyValidate,
+	}.MustBuild()
+
 	// All contains all collections in the system.
 	All = collection.NewSchemasBuilder().
 		MustAdd(AuthorizationPolicy).
@@ -917,6 +933,7 @@ var (
 		MustAdd(WorkloadEntry).
 		MustAdd(WorkloadGroup).
 		MustAdd(XBackendTrafficPolicy).
+		MustAdd(XListenerSet).
 		Build()
 
 	// Kube contains only kubernetes collections.
@@ -955,6 +972,7 @@ var (
 		MustAdd(UDPRoute).
 		MustAdd(ValidatingWebhookConfiguration).
 		MustAdd(XBackendTrafficPolicy).
+		MustAdd(XListenerSet).
 		Build()
 
 	// Pilot contains only collections used by Pilot.
@@ -1004,6 +1022,7 @@ var (
 			MustAdd(WorkloadEntry).
 			MustAdd(WorkloadGroup).
 			MustAdd(XBackendTrafficPolicy).
+			MustAdd(XListenerSet).
 			Build()
 
 	// PilotStableGatewayAPI contains only collections used by Pilot, including beta+ Gateway API.

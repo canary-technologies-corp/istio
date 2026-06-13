@@ -43,6 +43,7 @@ import (
 	apiistioioapinetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	apiistioioapisecurityv1 "istio.io/client-go/pkg/apis/security/v1"
 	apiistioioapitelemetryv1 "istio.io/client-go/pkg/apis/telemetry/v1"
+	istioioistiopilotpkgconfigkubegatewayxlistenersetcompat "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 )
 
 func create(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
@@ -1851,6 +1852,25 @@ var translationMap = map[config.GroupVersionKind]func(r runtime.Object) config.C
 		return config.Config{
 			Meta: config.Meta{
 				GroupVersionKind:  gvk.XBackendTrafficPolicy,
+				Name:              obj.Name,
+				Namespace:         obj.Namespace,
+				Labels:            obj.Labels,
+				Annotations:       obj.Annotations,
+				ResourceVersion:   obj.ResourceVersion,
+				CreationTimestamp: obj.CreationTimestamp.Time,
+				OwnerReferences:   obj.OwnerReferences,
+				UID:               string(obj.UID),
+				Generation:        obj.Generation,
+			},
+			Spec:   &obj.Spec,
+			Status: &obj.Status,
+		}
+	},
+	gvk.XListenerSet: func(r runtime.Object) config.Config {
+		obj := r.(*istioioistiopilotpkgconfigkubegatewayxlistenersetcompat.XListenerSet)
+		return config.Config{
+			Meta: config.Meta{
+				GroupVersionKind:  gvk.XListenerSet,
 				Name:              obj.Name,
 				Namespace:         obj.Namespace,
 				Labels:            obj.Labels,

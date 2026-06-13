@@ -26,6 +26,8 @@ import (
 	apiistioioapisecurityv1 "istio.io/client-go/pkg/apis/security/v1"
 	apiistioioapitelemetryv1alpha1 "istio.io/client-go/pkg/apis/telemetry/v1alpha1"
 	apiistioioapitelemetryv1 "istio.io/client-go/pkg/apis/telemetry/v1"
+
+	xlsc "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 {{- range .Packages}}
 	{{.ImportName}} "{{.PackageName}}"
 {{- end}}
@@ -41,7 +43,7 @@ func GetWriteClient[T runtime.Object](c ClientGetter, namespace string) ktypes.W
 	}
 	switch any(ptr.Empty[T]()).(type) {
 {{- range .Entries }}
-	{{- if not .Resource.Synthetic }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.NoTypedClient) }}
 	case *{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}:
 		return  c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}namespace{{end}}).(ktypes.WriteAPI[T])
 	{{- end }}
@@ -54,7 +56,7 @@ func GetWriteClient[T runtime.Object](c ClientGetter, namespace string) ktypes.W
 func GetClient[T, TL runtime.Object](c ClientGetter, namespace string) ktypes.ReadWriteAPI[T, TL] {
 	switch any(ptr.Empty[T]()).(type) {
 {{- range .Entries }}
-	{{- if not .Resource.Synthetic }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.NoTypedClient) }}
 	case *{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}:
 		return  c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}namespace{{end}}).(ktypes.ReadWriteAPI[T, TL])
 	{{- end }}
@@ -67,11 +69,14 @@ func GetClient[T, TL runtime.Object](c ClientGetter, namespace string) ktypes.Re
 func gvrToObject(g schema.GroupVersionResource) runtime.Object {
 	switch g {
 {{- range .Entries }}
-	{{- if not .Resource.Synthetic }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.NoTypedClient) }}
 	case gvr.{{ .Resource.Identifier }}:
 		return &{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}{}
 	{{- end }}
 {{- end }}
+	// canary-1.30-xls patch: XListenerSet typed object via compat package
+	case gvr.XListenerSet:
+		return &xlsc.XListenerSet{}
   default:
     panic(fmt.Sprintf("Unknown type %v", g))
 	}
@@ -83,7 +88,7 @@ func getInformerFiltered(c ClientGetter, opts ktypes.InformerOptions, g schema.G
 
 	switch g {
 {{- range .Entries }}
-	{{- if not .Resource.Synthetic }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.NoTypedClient) }}
 	case gvr.{{ .Resource.Identifier }}:
 		l = func(options metav1.ListOptions) (runtime.Object, error) {
 			return c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}opts.Namespace{{end}}).List(context.Background(), options)
@@ -93,6 +98,14 @@ func getInformerFiltered(c ClientGetter, opts ktypes.InformerOptions, g schema.G
 		}
 	{{- end }}
 {{- end }}
+	// canary-1.30-xls patch: XListenerSet via dynamic client + typed conversion
+	case gvr.XListenerSet:
+		l = func(options metav1.ListOptions) (runtime.Object, error) {
+			return xlsc.List(c.Dynamic(), opts.Namespace, options)
+		}
+		w = func(options metav1.ListOptions) (watch.Interface, error) {
+			return xlsc.Watch(c.Dynamic(), opts.Namespace, options)
+		}
   default:
     panic(fmt.Sprintf("Unknown type %v", g))
 	}

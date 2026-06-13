@@ -46,6 +46,13 @@ type Resource struct {
 	Builtin            bool     `json:"builtin"`
 	Specless           bool     `json:"specless"`
 	Synthetic          bool     `json:"synthetic"`
+	// NoTypedClient indicates the resource has no typed client-go
+	// entry. Pilot reads via dynamic informer + scheme registration;
+	// status writes go through a custom path. Set by the in-fork
+	// XListenerSet compat patch (canary-1.30-xls) since the
+	// experimental kind was removed from sigs.k8s.io/gateway-api in
+	// v1.5 and no upstream typed client exists.
+	NoTypedClient      bool     `json:"noTypedClient"`
 	Proto              string   `json:"proto"`
 	ProtoPackage       string   `json:"protoPackage"`
 	StatusProto        string   `json:"statusProto"`

@@ -29,7 +29,7 @@ import (
 func create(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
 	switch cfg.GroupVersionKind {
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) (not .Resource.NoTypedClient) }}
 	case gvk.{{.Resource.Identifier}}:
 		return c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}cfg.Namespace{{end}}).Create(context.TODO(), &{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}{
 			ObjectMeta: objMeta,
@@ -45,7 +45,7 @@ func create(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1
 func update(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
 	switch cfg.GroupVersionKind {
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) (not .Resource.NoTypedClient) }}
 	case gvk.{{.Resource.Identifier}}:
 		return c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}cfg.Namespace{{end}}).Update(context.TODO(), &{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}{
 			ObjectMeta: objMeta,
@@ -61,7 +61,7 @@ func update(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1
 func updateStatus(c kube.Client, cfg config.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
 	switch cfg.GroupVersionKind {
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) (or (not .Resource.Builtin) (eq .Resource.Identifier "Ingress")) (not (eq .StatusType "")) }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.NoTypedClient) (or (not .Resource.Builtin) (eq .Resource.Identifier "Ingress")) (not (eq .StatusType "")) }}
 	case gvk.{{.Resource.Identifier}}:
 		return c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}cfg.Namespace{{end}}).UpdateStatus(context.TODO(), &{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}{
 			ObjectMeta: objMeta,
@@ -80,7 +80,7 @@ func patch(c kube.Client, orig config.Config, origMeta metav1.ObjectMeta, mod co
 	}
 	switch orig.GroupVersionKind {
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) (not .Resource.NoTypedClient) }}
 	case gvk.{{.Resource.Identifier}}:
 		oldRes := &{{ .IstioAwareClientImport }}.{{ .Resource.Kind }}{
 				ObjectMeta: origMeta,
@@ -111,7 +111,7 @@ func delete(c kube.Client, typ config.GroupVersionKind, name, namespace string, 
 	}
 	switch typ {
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) }}
+	{{- if and (not .Resource.Synthetic) (not .Resource.Builtin) (not .Resource.NoTypedClient) }}
 	case gvk.{{.Resource.Identifier}}:
 		return c.{{.ClientGetter}}().{{ .ClientGroupPath }}().{{ .ClientTypePath }}({{if not .Resource.ClusterScoped}}namespace{{end}}).Delete(context.TODO(), name, deleteOptions)
 	{{- end }}
@@ -124,7 +124,7 @@ func delete(c kube.Client, typ config.GroupVersionKind, name, namespace string, 
 
 var translationMap = map[config.GroupVersionKind]func(r runtime.Object) config.Config{
 {{- range .Entries }}
-	{{- if and (not .Resource.Synthetic) }}
+	{{- if not .Resource.Synthetic }}
 	gvk.{{.Resource.Identifier}}: func(r runtime.Object) config.Config {
 		obj := r.(*{{ .IstioAwareClientImport }}.{{.Resource.Kind}})
 		return config.Config{

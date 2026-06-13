@@ -32,6 +32,7 @@ import (
 	apiistioioapinetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	apiistioioapisecurityv1 "istio.io/client-go/pkg/apis/security/v1"
 	apiistioioapitelemetryv1 "istio.io/client-go/pkg/apis/telemetry/v1"
+	istioioistiopilotpkgconfigkubegatewayxlistenersetcompat "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 	"istio.io/istio/pkg/config"
 	"istio.io/istio/pkg/config/schema/gvk"
 )
@@ -170,6 +171,8 @@ func getGvk(obj any) (config.GroupVersionKind, bool) {
 		return gvk.WorkloadGroup, true
 	case *sigsk8siogatewayapiapisxv1alpha1.XBackendTrafficPolicy:
 		return gvk.XBackendTrafficPolicy, true
+	case *istioioistiopilotpkgconfigkubegatewayxlistenersetcompat.XListenerSet:
+		return gvk.XListenerSet, true
 	default:
 		return config.GroupVersionKind{}, false
 	}

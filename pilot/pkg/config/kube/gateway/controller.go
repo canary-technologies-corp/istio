@@ -28,6 +28,7 @@ import (
 	gatewayx "sigs.k8s.io/gateway-api/apisx/v1alpha1"
 
 	networkingclient "istio.io/client-go/pkg/apis/networking/v1"
+	"istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 	"istio.io/istio/pilot/pkg/config/kube/gatewaycommon"
 	kubesecrets "istio.io/istio/pilot/pkg/credentials/kube"
 	"istio.io/istio/pilot/pkg/features"
@@ -147,6 +148,9 @@ type Inputs struct {
 	TCPRoutes            krt.Collection[*gatewayalpha.TCPRoute]
 	TLSRoutes            krt.Collection[*gatewayv1.TLSRoute]
 	ListenerSets         krt.Collection[*gatewayv1.ListenerSet]
+	// XListenerSets: experimental gateway.networking.x-k8s.io/v1alpha1 backwards-compat
+	// path for the 1.30 migration. canary-1.30-xls patch.
+	XListenerSets        krt.Collection[*xlistenersetcompat.XListenerSet]
 	ReferenceGrants      krt.Collection[*gateway.ReferenceGrant]
 	BackendTrafficPolicy krt.Collection[*gatewayx.XBackendTrafficPolicy]
 	BackendTLSPolicies   krt.Collection[*gatewayv1.BackendTLSPolicy]
@@ -212,10 +216,16 @@ func NewController(
 	if features.EnableAlphaGatewayAPI {
 		inputs.TCPRoutes = buildClient[*gatewayalpha.TCPRoute](c, kc, gvr.TCPRoute, opts, "informer/TCPRoutes")
 		inputs.BackendTrafficPolicy = buildClient[*gatewayx.XBackendTrafficPolicy](c, kc, gvr.XBackendTrafficPolicy, opts, "informer/XBackendTrafficPolicy")
+		// XListenerSet: experimental backwards-compat. Custom typed informer
+		// registered via kubeclient.Register in xlistenerset_register.go uses
+		// the dynamic client + JSON conversion to produce typed
+		// *xlistenersetcompat.XListenerSet objects. canary-1.30-xls patch.
+		inputs.XListenerSets = buildClient[*xlistenersetcompat.XListenerSet](c, kc, gvr.XListenerSet, opts, "informer/XListenerSet")
 	} else {
 		// If disabled, still build a collection but make it always empty
 		inputs.TCPRoutes = krt.NewStaticCollection[*gatewayalpha.TCPRoute](nil, nil, opts.WithName("disable/TCPRoutes")...)
 		inputs.BackendTrafficPolicy = krt.NewStaticCollection[*gatewayx.XBackendTrafficPolicy](nil, nil, opts.WithName("disable/XBackendTrafficPolicy")...)
+		inputs.XListenerSets = krt.NewStaticCollection[*xlistenersetcompat.XListenerSet](nil, nil, opts.WithName("disable/XListenerSet")...)
 	}
 
 	if features.EnableGatewayAPIInferenceExtension {
@@ -253,6 +263,29 @@ func NewController(
 		c.tagWatcher,
 		opts,
 	)
+
+	// canary-1.30-xls patch: XListenerSet (gateway.networking.x-k8s.io)
+	// support during the 1.30 migration is handled by normalizing the
+	// route parentRef kind from XListenerSet to ListenerSet in
+	// toInternalParentReference (see conversion.go), NOT by running a
+	// parallel adapter pipeline. The earlier parallel-pipeline approach
+	// generated internal Gateway entries with the same Namespace+Name as
+	// the native ListenerSet path, and krt collections deduplicate by
+	// ResourceName (Namespace/Name), so whichever path joined last
+	// overwrote the other. That caused HTTPRoutes targeting one kind to
+	// stop attaching when the join order changed.
+	//
+	// The helmfile dual-renders both XListenerSet and ListenerSet with
+	// identical name and section names during migration, so the native
+	// LS path produces the internal Gateway entries and XLS-targeted
+	// HTTPRoutes resolve to them via the kind normalization.
+	//
+	// xlsToListenerSetCollection (in xlistenerset_register.go) and the
+	// XListenerSet informer registration stay so istiod can still list /
+	// watch XListenerSet objects without panicking; the read just isn't
+	// used to produce internal Gateway entries.
+	_ = xlsToListenerSetCollection
+	_ = inputs.XListenerSets
 
 	// GatewaysStatus is not fully complete until its join with route attachments to report attachedRoutes.
 	// Do not register yet.

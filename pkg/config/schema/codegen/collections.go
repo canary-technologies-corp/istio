@@ -201,11 +201,17 @@ func toImport(p string) string {
 }
 
 func toIstioAwareImport(protoPackage string, version string) string {
+	// The "api"+<base>+<version> form mirrors istio.io/client-go which provides
+	// a parallel kube client wrapper for istio.io/api kinds. Apply that form
+	// only when the proto package is actually under istio.io/api; in-fork
+	// compat packages under istio.io/istio (and other unrelated paths) have
+	// no such wrapper, so emit the same import as ClientImport so the
+	// template's duplicate-case branch is skipped.
+	if !strings.HasPrefix(protoPackage, "istio.io/api/") {
+		return toImport(protoPackage)
+	}
 	p := strings.Split(protoPackage, "/")
 	base := strings.Join(p[:len(p)-1], "")
 	imp := strings.ReplaceAll(strings.ReplaceAll(base, ".", ""), "-", "") + version
-	if strings.Contains(protoPackage, "istio.io") {
-		return "api" + imp
-	}
-	return imp
+	return "api" + imp
 }

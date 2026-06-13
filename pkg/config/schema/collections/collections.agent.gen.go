@@ -11,6 +11,8 @@ import (
 
 	"reflect"
 
+	sigsk8siogatewayapiapisv1 "sigs.k8s.io/gateway-api/apis/v1"
+
 	istioioapiextensionsv1alpha1 "istio.io/api/extensions/v1alpha1"
 	istioioapimeshv1alpha1 "istio.io/api/mesh/v1alpha1"
 	istioioapimetav1alpha1 "istio.io/api/meta/v1alpha1"
@@ -18,6 +20,7 @@ import (
 	istioioapinetworkingv1beta1 "istio.io/api/networking/v1beta1"
 	istioioapisecurityv1beta1 "istio.io/api/security/v1beta1"
 	istioioapitelemetryv1alpha1 "istio.io/api/telemetry/v1alpha1"
+	istioioistiopilotpkgconfigkubegatewayxlistenersetcompat "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat"
 )
 
 var (
@@ -301,6 +304,21 @@ var (
 		ValidateProto: validation.ValidateWorkloadGroup,
 	}.MustBuild()
 
+	XListenerSet = resource.Builder{
+		Identifier: "XListenerSet",
+		Group:      "gateway.networking.x-k8s.io",
+		Kind:       "XListenerSet",
+		Plural:     "xlistenersets",
+		Version:    "v1alpha1",
+		Proto:      "ListenerSetSpec", StatusProto: "ListenerSetStatus",
+		ReflectType: reflect.TypeOf(&istioioistiopilotpkgconfigkubegatewayxlistenersetcompat.ListenerSetSpec{}).Elem(), StatusType: reflect.TypeOf(&sigsk8siogatewayapiapisv1.ListenerSetStatus{}).Elem(),
+		ProtoPackage: "istio.io/istio/pilot/pkg/config/kube/gateway/xlistenersetcompat", StatusPackage: "sigs.k8s.io/gateway-api/apis/v1",
+		ClusterScoped: false,
+		Synthetic:     false,
+		Builtin:       false,
+		ValidateProto: validation.EmptyValidate,
+	}.MustBuild()
+
 	// All contains all collections in the system.
 	All = collection.NewSchemasBuilder().
 		MustAdd(AuthorizationPolicy).
@@ -319,10 +337,12 @@ var (
 		MustAdd(WasmPlugin).
 		MustAdd(WorkloadEntry).
 		MustAdd(WorkloadGroup).
+		MustAdd(XListenerSet).
 		Build()
 
 	// Kube contains only kubernetes collections.
 	Kube = collection.NewSchemasBuilder().
+		MustAdd(XListenerSet).
 		Build()
 
 	// Pilot contains only collections used by Pilot.
@@ -359,6 +379,7 @@ var (
 			MustAdd(WasmPlugin).
 			MustAdd(WorkloadEntry).
 			MustAdd(WorkloadGroup).
+			MustAdd(XListenerSet).
 			Build()
 
 	// PilotStableGatewayAPI contains only collections used by Pilot, including beta+ Gateway API.

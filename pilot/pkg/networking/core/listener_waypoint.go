@@ -578,7 +578,7 @@ func (lb *ListenerBuilder) buildWaypointInternal(wls []model.WorkloadInfo, svcs 
 				delete(svcHostnameMap.Map, authorityKey)
 			}
 		}
-		if len(portMapper.Map) > 0 {
+		if len(portMapper.Map) > 0 && len(svcAddresses) > 0 {
 			ranges := slices.Map(svcAddresses, func(vip string) *xds.CidrRange {
 				cidr := util.ConvertAddressToCidr(vip)
 				return &xds.CidrRange{
